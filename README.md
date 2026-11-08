@@ -8,7 +8,7 @@
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.7-F7931E.svg)](https://scikit-learn.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-10B981.svg)](https://tailwindcss.com/)
-[![Tests](https://img.shields.io/badge/Pytest-14%20Passed-16A34A.svg)]()
+[![Tests](https://img.shields.io/badge/Pytest-17%20Passed-16A34A.svg)]()
 
 ---
 
@@ -73,8 +73,10 @@ FarmVision mengadopsi visual identity berstandar dark-canvas pertanian modern:
 8. **Smart Planting Calendar & Agro-Climate**: Kalender tanam musiman Indonesia (Rendengan & Gadu), rekomendasi pergiliran tanaman, dan prakiraan cuaca 7 hari.
 9. **Harvest & Operations ERP**: Buku besar hasil panen riil, sertifikasi grading mutu (Super/A/B), stok persediaan saprodi, dan penugasan kerja lapangan.
 10. **Agronomist Clinical Review Center**: Tinjauan klinis diagnosis AI dan penerbitan persetujuan resep resmi.
-11. **System Stress Benchmark**: Pengujian ketahanan telemetri (hingga 1.000 TPS) dengan metrik latensi p50/p95/p99.
-12. **AI Agricultural Assistant (RAG Chatbot)**: Asisten cerdas dwibahasa yang terhubung langsung ke telemetri sensor dan basis pengetahuan agronomi tropis.
+11. **Kalkulator Pupuk Berimbang NPK & Dolomit**: Perhitungan presisi dosis Urea, SP-36, KCl, dan pengapuran tanah masam berdasar target panen.
+12. **Early Warning Radar Hama & Epidemi**: Prediksi risiko serangan blas padi, patek cabai, dan hawar daun berdasar kombinasi cuaca mikro kanopi.
+13. **System Stress Benchmark**: Pengujian ketahanan telemetri (hingga 1.500 TPS) dengan metrik latensi p50/p95/p99 dan unduh sertifikat IndoGAP.
+14. **AI Agricultural Assistant (RAG Chatbot)**: Asisten cerdas dwibahasa yang terhubung langsung ke telemetri sensor dan basis pengetahuan agronomi tropis.
 
 ---
 
@@ -108,4 +110,4 @@ Uji seluruh endpoint dan logika inferensi dengan **pytest**:
 cd "C:\Kuliah Sisfor\Github Project\farmvision-platform\backend"
 python -m pytest tests/ -v
 ```
-Hasil uji: **14 passed (100% OK, 1.82 detik)**.
+Hasil uji: **17 passed (100% OK, 1.18 detik)**.

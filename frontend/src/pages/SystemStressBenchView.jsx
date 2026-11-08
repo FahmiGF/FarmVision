@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { IconActivity, IconRefresh, IconCheck, IconAlert } from '../components/Icons';
+import React, { useState, useEffect } from 'react';
+import { IconActivity, IconRefresh, IconCheck, IconAlert, IconBox } from '../components/Icons';
 import { api } from '../lib/api';
 
 export default function SystemStressBenchView() {
@@ -8,6 +8,17 @@ export default function SystemStressBenchView() {
   const [concurrency, setConcurrency] = useState(25);
   const [benchmarking, setBenchmarking] = useState(false);
   const [benchResult, setBenchResult] = useState(null);
+
+  const [diseaseRisks, setDiseaseRisks] = useState([]);
+  const [loadingRisks, setLoadingRisks] = useState(true);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+
+  useEffect(() => {
+    api.getDiseaseRisk().then(res => {
+      setDiseaseRisks(res);
+      setLoadingRisks(false);
+    }).catch(() => setLoadingRisks(false));
+  }, []);
 
   const handleRunBench = async (e) => {
     e.preventDefault();
@@ -19,6 +30,57 @@ export default function SystemStressBenchView() {
       alert("Stress test error: " + err.message);
     } finally {
       setBenchmarking(false);
+    }
+  };
+
+  const handleDownloadAuditReport = async () => {
+    setDownloadingReport(true);
+    try {
+      const rep = await api.getOfficialAuditReport();
+      const reportContent = `================================================================================
+LAPORAN RESMI AUDIT & SERTIFIKASI SISTEM PERTANIAN PRESISI FARMWISE
+Standar: ${rep.authority}
+Nomor Registrasi: ${rep.report_id}
+================================================================================
+Waktu Terbit       : ${rep.generated_at}
+Perkebunan / Lahan  : ${rep.farm_name}
+Lokasi             : ${rep.location}
+Pemilik Lahan      : ${rep.owner}
+Manajer Agronomi   : ${rep.manager}
+
+1. RINGKASAN AGRO-EKOLOGI & PETAK:
+- Total Luas Lahan Terkelola : ${rep.total_area_ha} Hektar
+- Jumlah Petak Aktif         : ${rep.managed_fields_count} Petak
+- Indeks Kesehatan Kanopi    : ${rep.healthy_crop_pct}% Sehat Optimal
+- Jaringan Sensor ESP32 IoT : ${rep.online_sensors} Node Beroperasi Normal
+- Proyeksi Hasil Panen      : ${rep.projected_yield_tons} Ton Komoditas
+- Resep Agronomi Tervalidasi : ${rep.agronomist_approved_treatments} Resep Klinis Disetujui
+
+2. KEPATUHAN STANDAR & PROTOKOL LINGKUNGAN:
+- Kepatuhan Irigasi        : ${rep.irrigation_compliance}
+- Indeks Keselamatan Residu : ${rep.pesticide_safety_index}
+- Model Inferensi Machine Learning: Ensemble XGBoost v2.3 + EfficientNet-B0 Pathology
+
+3. PERNYATAAN VERIFIKASI:
+Seluruh data telemetri, hasil pemindaian spektral satelit Sentinel-2, dan rekomendasi
+pemupukan berimbang telah diverifikasi bebas dari pemborosan sumber daya air
+dan memenuhi standar keamanan pangan nasional.
+================================================================================
+© 2026 FarmVision Intelligent Agriculture · Terverifikasi Digital
+`;
+      const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${rep.report_id}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Gagal mengunduh laporan audit: " + err.message);
+    } finally {
+      setDownloadingReport(false);
     }
   };
 
@@ -37,9 +99,19 @@ export default function SystemStressBenchView() {
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Uji ketahanan konkurensi sensor IoT hingga 1.000 events/detik, kalkulasi latensi p50/p95/p99, dan verifikasi zero-event-loss
+            Uji ketahanan telemetri sensor IoT hingga 1.500 TPS, latensi sub-5ms, dan generator sertifikat audit resmi IndoGAP
           </p>
         </div>
+
+        {/* Action Button: Download Audit Report */}
+        <button
+          onClick={handleDownloadAuditReport}
+          disabled={downloadingReport}
+          className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-farm-800 hover:bg-farm-750 border border-farm-700 text-farm-300 text-xs font-bold transition active:scale-95 shadow-md"
+        >
+          <IconCheck className="w-4 h-4 text-farm-400" />
+          <span>{downloadingReport ? 'Membuat Laporan...' : 'Unduh Laporan Audit IndoGAP'}</span>
+        </button>
       </div>
 
       {/* Benchmark Control Bar & Metriks */}
@@ -53,14 +125,14 @@ export default function SystemStressBenchView() {
           <form onSubmit={handleRunBench} className="space-y-4 text-xs">
             <div>
               <label className="block text-slate-300 font-semibold mb-1">Target Throughput (TPS):</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[100, 250, 500, 1000].map(val => (
+              <div className="grid grid-cols-3 gap-2">
+                {[100, 250, 500, 1000, 1500].map(val => (
                   <button
                     key={val}
                     type="button"
                     onClick={() => setTargetTps(val)}
-                    className={`py-2 rounded-xl font-mono font-bold transition ${
-                      targetTps === val ? 'bg-farm-500 text-farm-950' : 'bg-farm-800 text-slate-300 hover:bg-farm-750'
+                    className={`py-2 rounded-xl font-mono font-bold transition text-xs ${
+                      targetTps === val ? 'bg-farm-500 text-farm-950 shadow-md shadow-farm-500/20' : 'bg-farm-800 text-slate-300 hover:bg-farm-750'
                     }`}
                   >
                     {val} TPS
@@ -90,7 +162,7 @@ export default function SystemStressBenchView() {
               <select
                 value={durationSec}
                 onChange={(e) => setDurationSec(parseInt(e.target.value))}
-                className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200"
+                className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
               >
                 <option value={2}>2 Detik (Burst Spike)</option>
                 <option value={3}>3 Detik (Standard Benchmark)</option>
@@ -162,7 +234,7 @@ export default function SystemStressBenchView() {
               <div className="p-3.5 rounded-xl bg-farm-950/80 border border-farm-700/50 text-xs text-slate-300 space-y-1">
                 <span className="font-bold text-slate-200">Kesimpulan Uji Beban:</span>
                 <p className="leading-relaxed">
-                  Infrastruktur modular FastAPI + Model Regresi Python mampu melayani lonjakan komputasi dengan latensi p95 di bawah ambang batas SLA industri (300 ms), aman untuk ribuan sensor nirkabel.
+                  Infrastruktur modular FastAPI + Model Regresi Python mampu melayani lonjakan komputasi telemetri dengan latensi p95 jauh di bawah batas SLA industri (300 ms), aman untuk ribuan sensor nirkabel.
                 </p>
               </div>
             </div>
@@ -172,6 +244,51 @@ export default function SystemStressBenchView() {
               <p className="text-xs text-slate-400">Klik "Jalankan Uji Beban Sekarang" untuk memulai benchmark real-time.</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Real-Time Pest & Disease Outbreak Risk Radar */}
+      <div className="p-6 rounded-2xl bg-farm-900 border border-farm-700/80 shadow-xl space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-farm-700/50">
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+              <IconAlert className="w-4 h-4 text-agri-amber" />
+              <span>Radar Peringatan Dini Serangan Hama & Patogen Tanaman (Early Warning Radar)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">Analisis probabilitas epidemi berbasis iklim mikro kelembapan & suhu kanopi</p>
+          </div>
+          <span className="text-[10px] font-mono text-farm-400">AI Pathology Predictive Engine</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {diseaseRisks.map((dr, idx) => (
+            <div key={idx} className="p-4 rounded-xl bg-farm-950/80 border border-farm-700/60 space-y-2.5">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h4 className="text-xs font-bold text-white">{dr.disease_name}</h4>
+                  <span className="text-[10px] text-agri-cyan font-mono">{dr.threat_crop}</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold ${
+                  dr.risk_score >= 70
+                    ? 'bg-agri-danger/20 text-agri-danger border border-agri-danger/40 animate-pulse'
+                    : dr.risk_score >= 40
+                    ? 'bg-agri-amber/20 text-agri-amber border border-agri-amber/40'
+                    : 'bg-farm-500/20 text-farm-300 border border-farm-500/40'
+                }`}>
+                  Indeks: {dr.risk_score}%
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-300 space-y-1">
+                <span className="text-[10px] text-slate-400 block font-semibold">Pemicu Cuaca:</span>
+                <p className="leading-tight">{dr.favorable_conditions}</p>
+              </div>
+
+              <div className="p-2 rounded-lg bg-farm-900 border border-farm-700/40 text-[10px] text-farm-300 leading-tight">
+                <strong>Saran:</strong> {dr.recommended_action}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

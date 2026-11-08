@@ -188,3 +188,35 @@ def test_system_stress_benchmark():
     data = res.json()
     assert data["success_rate_pct"] == 100.0
     assert data["p95_latency_ms"] < 50.0
+
+def test_disease_outbreak_risk_matrix():
+    res = client.get("/api/v1/predictions/disease-risk")
+    assert res.status_code == 200
+    threats = res.json()
+    assert len(threats) >= 3
+    assert any("Blas" in t["disease_name"] for t in threats)
+
+def test_fertilizer_dosage_calculator():
+    payload = {
+        "crop": "Padi (Rice)",
+        "area_ha": 3.0,
+        "soil_ph": 5.4,
+        "current_n": 100.0,
+        "current_p": 45.0,
+        "current_k": 70.0,
+        "target_yield_ton": 6.5
+    }
+    res = client.post("/api/v1/fertilizers/calculate-dose", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["urea_kg"] > 0
+    assert data["dolomite_lime_kg"] > 0  # Since pH is 5.4 < 6.0
+    assert len(data["application_schedule"]) == 3
+
+def test_official_audit_report():
+    res = client.get("/api/v1/reports/official-audit")
+    assert res.status_code == 200
+    data = res.json()
+    assert "REP-AGRI" in data["report_id"]
+    assert "IndoGAP" in data["authority"]
+

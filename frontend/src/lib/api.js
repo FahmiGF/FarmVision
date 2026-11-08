@@ -100,4 +100,16 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ target_tps: targetTps, duration_sec: durationSec, concurrency })
   }),
+
+  // Pest & Disease Risk Outbreak Radar
+  getDiseaseRisk: () => request('/predictions/disease-risk'),
+
+  // Fertilizer & Nutrient Dose Calculator
+  calculateFertilizerDose: (data) => request('/fertilizers/calculate-dose', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // Official Audit & IndoGAP Certification Report
+  getOfficialAuditReport: () => request('/reports/official-audit'),
 };

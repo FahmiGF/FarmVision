@@ -411,6 +411,38 @@ def chat_ai_assistant(payload: AIChatRequest):
         "source": "FarmVision Agronomic Knowledge Base & Telemetry Engine"
     }
 
+# --- Pest & Disease Risk Outbreak Radar (Modul L) ---
+@app.get("/api/v1/predictions/disease-risk")
+def get_disease_outbreak_risk():
+    return ml_models_engine.get_disease_outbreak_risk_matrix()
+
+# --- Fertilizer & Nutrient Dose Calculator (Modul J) ---
+class FertilizerDoseRequest(BaseModel):
+    crop: str = "Padi (Rice)"
+    area_ha: float = 2.0
+    soil_ph: float = 6.4
+    current_n: float = 120.0
+    current_p: float = 60.0
+    current_k: float = 90.0
+    target_yield_ton: float = 6.5
+
+@app.post("/api/v1/fertilizers/calculate-dose")
+def calculate_fertilizer_dose(payload: FertilizerDoseRequest):
+    return ml_models_engine.calculate_fertilizer_dosage(
+        crop=payload.crop,
+        area_ha=payload.area_ha,
+        soil_ph=payload.soil_ph,
+        current_n=payload.current_n,
+        current_p=payload.current_p,
+        current_k=payload.current_k,
+        target_yield_ton=payload.target_yield_ton
+    )
+
+# --- Official Agricultural Certification & Audit Report ---
+@app.get("/api/v1/reports/official-audit")
+def get_official_audit_report():
+    return store.generate_official_audit_report()
+
 # --- Stress Test Benchmark (Modul 10) ---
 class StressBenchmarkRequest(BaseModel):
     target_tps: int = 200

@@ -3,11 +3,19 @@ import { IconBox, IconPlus, IconCheck, IconTractor } from '../components/Icons';
 import { api } from '../lib/api';
 
 export default function HarvestInventoryView() {
-  const [activeSubTab, setActiveSubTab] = useState('harvest'); // 'harvest', 'inventory', 'workorders'
+  const [activeSubTab, setActiveSubTab] = useState('harvest'); // 'harvest', 'inventory', 'workorders', 'fertilizer'
   const [harvests, setHarvests] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Fertilizer calculator state
+  const [fertCrop, setFertCrop] = useState('Padi (Rice)');
+  const [fertArea, setFertArea] = useState(2.5);
+  const [fertPh, setFertPh] = useState(5.8);
+  const [fertTarget, setFertTarget] = useState(6.5);
+  const [fertResult, setFertResult] = useState(null);
+  const [calculatingFert, setCalculatingFert] = useState(false);
 
   // New Harvest Form Modal
   const [showHarvestModal, setShowHarvestModal] = useState(false);
@@ -137,6 +145,24 @@ export default function HarvestInventoryView() {
           >
             Tugas Lapangan ({workOrders.length})
           </button>
+          <button
+            onClick={() => {
+              setActiveSubTab('fertilizer');
+              if (!fertResult) {
+                api.calculateFertilizerDose({
+                  crop: fertCrop,
+                  area_ha: fertArea,
+                  soil_ph: fertPh,
+                  target_yield_ton: fertTarget
+                }).then(setFertResult).catch(() => {});
+              }
+            }}
+            className={`px-3 py-1.5 rounded-lg font-semibold transition ${
+              activeSubTab === 'fertilizer' ? 'bg-farm-500 text-farm-950 font-bold' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            Kalkulator Pupuk NPK
+          </button>
         </div>
       </div>
 
@@ -234,6 +260,153 @@ export default function HarvestInventoryView() {
         </div>
       )}
 
+      {/* Sub-Tab 4: Fertilizer Dosage Calculator */}
+      {activeSubTab === 'fertilizer' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-farm-900 border border-farm-700/80 shadow-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-farm-700/50">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Kalkulator Rekomendasi Dosis Pupuk Berimbang NPK & Dolomit
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Formulasi kebutuhan hara makro berdasar jenis komoditas, luas petak, dan pH tanah</p>
+              </div>
+              <span className="text-[10px] font-mono text-farm-400 font-bold bg-farm-800 px-2.5 py-1 rounded-lg border border-farm-700">
+                Standar Balai Penelitian Tanah
+              </span>
+            </div>
+
+            {/* Input Parameters Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Komoditas:</label>
+                <select
+                  value={fertCrop}
+                  onChange={(e) => setFertCrop(e.target.value)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200"
+                >
+                  <option value="Padi (Rice)">Padi (Rice)</option>
+                  <option value="Jagung (Corn)">Jagung (Corn)</option>
+                  <option value="Cabai Merah (Chili)">Cabai Merah (Chili)</option>
+                  <option value="Tomat (Tomato)">Tomat (Tomato)</option>
+                  <option value="Kedelai (Soybean)">Kedelai (Soybean)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Luas Lahan (ha):</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={fertArea}
+                  onChange={(e) => setFertArea(parseFloat(e.target.value) || 0.1)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Derajat Keasaman pH:</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="3.5"
+                  max="8.5"
+                  value={fertPh}
+                  onChange={(e) => setFertPh(parseFloat(e.target.value) || 6.0)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Target Panen (ton/ha):</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1.0"
+                  value={fertTarget}
+                  onChange={(e) => setFertTarget(parseFloat(e.target.value) || 5.0)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                setCalculatingFert(true);
+                try {
+                  const res = await api.calculateFertilizerDose({
+                    crop: fertCrop,
+                    area_ha: fertArea,
+                    soil_ph: fertPh,
+                    target_yield_ton: fertTarget
+                  });
+                  setFertResult(res);
+                } finally {
+                  setCalculatingFert(false);
+                }
+              }}
+              disabled={calculatingFert}
+              className="py-2.5 px-5 rounded-xl bg-farm-500 hover:bg-farm-400 text-farm-950 font-bold text-xs transition active:scale-95 shadow-md shadow-farm-500/20"
+            >
+              {calculatingFert ? 'Mengkalkulasi...' : 'Hitung Dosis Pupuk'}
+            </button>
+
+            {/* Result Cards */}
+            {fertResult && (
+              <div className="pt-4 border-t border-farm-700/50 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk Urea (46% N)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.urea_kg} kg</div>
+                    <span className="text-[10px] text-farm-400">Total untuk {fertResult.area_ha} ha</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk SP-36 (36% P2O5)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.sp36_kg} kg</div>
+                    <span className="text-[10px] text-agri-cyan">Aplikasi dasar</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk KCl (60% K2O)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.kcl_kg} kg</div>
+                    <span className="text-[10px] text-farm-300">Pengisian bulir/buah</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Kapur Pertanian (Dolomit)</span>
+                    <div className={`text-xl font-extrabold font-mono mt-1 ${fertResult.dolomite_lime_kg > 0 ? 'text-agri-amber' : 'text-slate-400'}`}>
+                      {fertResult.dolomite_lime_kg} kg
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      {fertResult.dolomite_lime_kg > 0 ? 'Menetralkan tanah masam' : 'Tanah tidak perlu kapur'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Application Schedule */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Jadwal Aplikasi Pemupukan Terjadwal:</h4>
+                  <div className="space-y-2 text-xs">
+                    {fertResult.application_schedule.map((sch, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-farm-850 border border-farm-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="font-bold text-farm-300 font-mono">{sch.timing}</span>
+                        <span className="text-slate-200">{sch.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-farm-950/70 border border-farm-700/40 text-xs text-slate-300">
+                  <strong className="text-farm-400">Saran Agronomis:</strong> {fertResult.agronomic_advisory}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Sub-Tab 3: Work Orders */}
       {activeSubTab === 'workorders' && (
         <div className="space-y-3">
@@ -272,6 +445,153 @@ export default function HarvestInventoryView() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sub-Tab 4: Fertilizer Dosage Calculator */}
+      {activeSubTab === 'fertilizer' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-farm-900 border border-farm-700/80 shadow-xl space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-farm-700/50">
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                  Kalkulator Rekomendasi Dosis Pupuk Berimbang NPK & Dolomit
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">Formulasi kebutuhan hara makro berdasar jenis komoditas, luas petak, dan pH tanah</p>
+              </div>
+              <span className="text-[10px] font-mono text-farm-400 font-bold bg-farm-800 px-2.5 py-1 rounded-lg border border-farm-700">
+                Standar Balai Penelitian Tanah
+              </span>
+            </div>
+
+            {/* Input Parameters Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Komoditas:</label>
+                <select
+                  value={fertCrop}
+                  onChange={(e) => setFertCrop(e.target.value)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200"
+                >
+                  <option value="Padi (Rice)">Padi (Rice)</option>
+                  <option value="Jagung (Corn)">Jagung (Corn)</option>
+                  <option value="Cabai Merah (Chili)">Cabai Merah (Chili)</option>
+                  <option value="Tomat (Tomato)">Tomat (Tomato)</option>
+                  <option value="Kedelai (Soybean)">Kedelai (Soybean)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Luas Lahan (ha):</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={fertArea}
+                  onChange={(e) => setFertArea(parseFloat(e.target.value) || 0.1)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Derajat Keasaman pH:</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="3.5"
+                  max="8.5"
+                  value={fertPh}
+                  onChange={(e) => setFertPh(parseFloat(e.target.value) || 6.0)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Target Panen (ton/ha):</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="1.0"
+                  value={fertTarget}
+                  onChange={(e) => setFertTarget(parseFloat(e.target.value) || 5.0)}
+                  className="w-full bg-farm-950 border border-farm-700 rounded-xl px-3 py-2 text-slate-200 font-mono"
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                setCalculatingFert(true);
+                try {
+                  const res = await api.calculateFertilizerDose({
+                    crop: fertCrop,
+                    area_ha: fertArea,
+                    soil_ph: fertPh,
+                    target_yield_ton: fertTarget
+                  });
+                  setFertResult(res);
+                } finally {
+                  setCalculatingFert(false);
+                }
+              }}
+              disabled={calculatingFert}
+              className="py-2.5 px-5 rounded-xl bg-farm-500 hover:bg-farm-400 text-farm-950 font-bold text-xs transition active:scale-95 shadow-md shadow-farm-500/20"
+            >
+              {calculatingFert ? 'Mengkalkulasi...' : 'Hitung Dosis Pupuk'}
+            </button>
+
+            {/* Result Cards */}
+            {fertResult && (
+              <div className="pt-4 border-t border-farm-700/50 space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk Urea (46% N)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.urea_kg} kg</div>
+                    <span className="text-[10px] text-farm-400">Total untuk {fertResult.area_ha} ha</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk SP-36 (36% P2O5)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.sp36_kg} kg</div>
+                    <span className="text-[10px] text-agri-cyan">Aplikasi dasar</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Pupuk KCl (60% K2O)</span>
+                    <div className="text-xl font-extrabold text-white font-mono mt-1">{fertResult.kcl_kg} kg</div>
+                    <span className="text-[10px] text-farm-300">Pengisian bulir/buah</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-farm-950 border border-farm-700/60">
+                    <span className="text-[10px] text-slate-400">Kapur Pertanian (Dolomit)</span>
+                    <div className={`text-xl font-extrabold font-mono mt-1 ${fertResult.dolomite_lime_kg > 0 ? 'text-agri-amber' : 'text-slate-400'}`}>
+                      {fertResult.dolomite_lime_kg} kg
+                    </div>
+                    <span className="text-[10px] text-slate-400">
+                      {fertResult.dolomite_lime_kg > 0 ? 'Menetralkan tanah masam' : 'Tanah tidak perlu kapur'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Application Schedule */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Jadwal Aplikasi Pemupukan Terjadwal:</h4>
+                  <div className="space-y-2 text-xs">
+                    {fertResult.application_schedule.map((sch, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-farm-850 border border-farm-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="font-bold text-farm-300 font-mono">{sch.timing}</span>
+                        <span className="text-slate-200">{sch.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-farm-950/70 border border-farm-700/40 text-xs text-slate-300">
+                  <strong className="text-farm-400">Saran Agronomis:</strong> {fertResult.agronomic_advisory}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

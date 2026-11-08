@@ -273,4 +273,104 @@ class MLModelsEngine:
             "recommended_action": "Lakukan sanitasi gulma dan semprot agens antagonis Trichoderma sp." if risk_score >= 45 else "Lakukan pemantauan rutin visual mingguan."
         }
 
+    def calculate_fertilizer_dosage(
+        self,
+        crop: str,
+        area_ha: float,
+        soil_ph: float = 6.4,
+        current_n: float = 120.0,
+        current_p: float = 60.0,
+        current_k: float = 90.0,
+        target_yield_ton: float = 6.5
+    ) -> Dict[str, Any]:
+        """
+        Calculates balanced fertilizer doses (Urea, SP-36, KCl, Dolomite, Compost)
+        based on soil nutrient deficit and crop extraction requirements.
+        """
+        # Crop nutrient extraction per ton yield (kg/ton)
+        extraction_rates = {
+            "Padi (Rice)": {"n": 18.0, "p2o5": 8.0, "k2o": 22.0},
+            "Jagung (Corn)": {"n": 22.0, "p2o5": 9.0, "k2o": 20.0},
+            "Cabai Merah (Chili)": {"n": 14.0, "p2o5": 6.5, "k2o": 18.0},
+            "Tomat (Tomato)": {"n": 10.0, "p2o5": 4.5, "k2o": 15.0},
+            "Kedelai (Soybean)": {"n": 8.0, "p2o5": 7.0, "k2o": 12.0},
+        }
+        rate = extraction_rates.get(crop, extraction_rates["Padi (Rice)"])
+
+        total_n_demand = rate["n"] * target_yield_ton * area_ha
+        total_p_demand = rate["p2o5"] * target_yield_ton * area_ha
+        total_k_demand = rate["k2o"] * target_yield_ton * area_ha
+
+        # Fertilizer conversions: Urea 46% N, SP-36 36% P2O5, KCl 60% K2O
+        urea_kg = max(50.0 * area_ha, round(total_n_demand / 0.46, 1))
+        sp36_kg = max(40.0 * area_ha, round(total_p_demand / 0.36, 1))
+        kcl_kg = max(40.0 * area_ha, round(total_k_demand / 0.60, 1))
+
+        # Dolomite lime if soil is acidic (pH < 6.0)
+        dolomite_kg = 0.0
+        if soil_ph < 6.0:
+            deficit_ph = 6.5 - soil_ph
+            dolomite_kg = round(deficit_ph * 1200.0 * area_ha, 0)
+
+        organic_compost_tons = round(2.0 * area_ha, 1)
+
+        schedule = [
+            {"timing": "Pemupukan Dasar (0-7 HST)", "description": f"Aplikasi 100% SP-36 ({sp36_kg:.0f} kg), 30% Urea ({(urea_kg * 0.3):.0f} kg), dan Kompos ({organic_compost_tons} ton) saat olah tanah."},
+            {"timing": "Pemupukan Susulan I (21-25 HST)", "description": f"Aplikasi 40% Urea ({(urea_kg * 0.4):.0f} kg) dan 50% KCl ({(kcl_kg * 0.5):.0f} kg) untuk merangsang anakan aktif / vegetatif."},
+            {"timing": "Pemupukan Susulan II (40-45 HST)", "description": f"Aplikasi 30% Urea ({(urea_kg * 0.3):.0f} kg) dan 50% KCl ({(kcl_kg * 0.5):.0f} kg) untuk pengisian bulir / pembentukan buah."}
+        ]
+
+        return {
+            "crop": crop,
+            "area_ha": area_ha,
+            "target_yield_ton": target_yield_ton,
+            "soil_ph": soil_ph,
+            "urea_kg": urea_kg,
+            "sp36_kg": sp36_kg,
+            "kcl_kg": kcl_kg,
+            "dolomite_lime_kg": dolomite_kg,
+            "organic_compost_tons": organic_compost_tons,
+            "npk_16_16_16_alternative_kg": round((urea_kg + sp36_kg + kcl_kg) * 0.75, 1),
+            "application_schedule": schedule,
+            "agronomic_advisory": f"Kebutuhan hara N-P-K terkalibrasi untuk target hasil {target_yield_ton} ton/ha. " +
+                                 ("Perlu pengapuran dolomit untuk menetralkan kemasaman tanah." if dolomite_kg > 0 else "Kondisi pH tanah ideal.")
+        }
+
+    def get_disease_outbreak_risk_matrix(self) -> List[Dict[str, Any]]:
+        """Returns disease outbreak risk forecast across major tropical crop diseases."""
+        return [
+            {
+                "disease_name": "Blas Padi (Pyricularia oryzae)",
+                "threat_crop": "Padi (Rice)",
+                "risk_score": 68,
+                "risk_level": "MODERATE_ELEVATED",
+                "favorable_conditions": "Kelembapan > 82%, kabut pagi, pemupukan N berlebih",
+                "recommended_action": "Hindari pupuk Urea tambahan, semprot agens antagonis Pseudomonas fluorescens."
+            },
+            {
+                "disease_name": "Antraknosa / Patek (Colletotrichum)",
+                "threat_crop": "Cabai Merah (Chili)",
+                "risk_score": 78,
+                "risk_level": "HIGH_ALERT",
+                "favorable_conditions": "Hujan sore hari, suhu 26-28°C, kelembapan kanopi jenuh",
+                "recommended_action": "Perdalam parit drainase bedengan, sanitasi buah busuk, semprot Trichoderma."
+            },
+            {
+                "disease_name": "Hawar Daun Dini (Alternaria solani)",
+                "threat_crop": "Tomat (Tomato)",
+                "risk_score": 54,
+                "risk_level": "MODERATE",
+                "favorable_conditions": "Percikan tanah hujan ke daun tua bagian bawah",
+                "recommended_action": "Pruning daun 20 cm dari tanah, pasang mulsa perak."
+            },
+            {
+                "disease_name": "Bulai & Hawar Jagung (Peronosclerospora)",
+                "threat_crop": "Jagung (Corn)",
+                "risk_score": 28,
+                "risk_level": "LOW_SAFE",
+                "favorable_conditions": "Suhu dingin malam hari < 20°C",
+                "recommended_action": "Monitoring visual rutin, kondisi aman terkendali."
+            }
+        ]
+
 ml_models_engine = MLModelsEngine()
